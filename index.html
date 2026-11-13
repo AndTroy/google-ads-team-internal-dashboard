@@ -789,6 +789,15 @@ function loadBf() {
     });
     base.forEach(function(b) { if (!siteMap[b.region]) perGroupNational[b.group] = (perGroupNational[b.group] || 0) + 1; });
 
+    // a region can have more than one campaign in a group (e.g. a paused duplicate):
+    // split the region's share among its active campaigns; if none are active, among all of them
+    var regTotal = {}, regActive = {};
+    camps.forEach(function(r) {
+      var k = (r['Group'] || '').trim() + '|' + (r['Region'] || '').trim();
+      regTotal[k] = (regTotal[k] || 0) + 1;
+      if ((r['Status'] || '').trim() === 'Active') regActive[k] = (regActive[k] || 0) + 1;
+    });
+
     bfRows = camps.filter(function(r) { return BF_GROUPS.indexOf((r['Group'] || '').trim()) !== -1; }).map(function(r) {
       var group = (r['Group'] || '').trim();
       var region = (r['Region'] || '').trim();
@@ -796,7 +805,9 @@ function loadBf() {
       var gBudget = budgetByGroup.hasOwnProperty(group) ? budgetByGroup[group] : null;
       var regional = siteMap.hasOwnProperty(region);
       var sitesN = regional ? siteMap[region] : null;
-      var share = regional && siteTotal > 0 ? sitesN / siteTotal : (perGroupNational[group] ? 1 / perGroupNational[group] : null);
+      var rk = group + '|' + region;
+      var campWeight = regActive[rk] ? (status === 'Active' ? 1 / regActive[rk] : 0) : 1 / regTotal[rk];
+      var share = regional && siteTotal > 0 ? sitesN / siteTotal * campWeight : (perGroupNational[group] ? 1 / perGroupNational[group] : null);
       var alloc = (gBudget !== null && share !== null) ? Math.round(gBudget * share * 100) / 100 : null;
       var spend = paceNum(r['Month-to-Date Spend']);
       var cur = paceNum(r['Daily Budget']);
@@ -956,7 +967,7 @@ function renderBf() {
     'The PayPerWash and Unlimited (Regional) Search budgets are split across the six regional campaigns by each region&rsquo;s share of open wash sites; Fleet Search is one national campaign. ' +
     '<strong>Spend To Date</strong> is Google Ads spend from the 1st through yesterday. <strong>Needed Daily Spend</strong> = (Month Budget &minus; Spend To Date) &divide; Days Left. ' +
     '<strong>Projected Month-End</strong> extends the month-to-date daily average to the end of the month; Pace is Under below ' + BF_TOLERANCE_LOW + '% and Over above ' + BF_TOLERANCE_HIGH + '% of the Month Budget. ' +
-    '<strong>Status</strong> is the campaign status in Google Ads; paused campaigns keep their budget share. Current Daily Budget totals count active campaigns only. ' +
+    '<strong>Status</strong> is the campaign status in Google Ads; paused campaigns keep their budget share unless another campaign in the same region is active, in which case the active one(s) share it. Current Daily Budget totals count active campaigns only. ' +
     'This page refreshes each morning.';
 }
 
