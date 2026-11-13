@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Tommy's Express — Brand Fund Search Budget Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --red:       #CF202F;
+      --dark-red:  #520612;
+      --black:     #000000;
+      --white:     #FFFFFF;
+      --gray:      #F2F2F2;
+      --mid-gray:  #E0E0E0;
+      --text-gray: #555555;
+      --shadow:    0 2px 8px rgba(0,0,0,0.10);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--gray);
+      color: var(--black);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ─────────────────────────────────────── */
+    header {
+      background: var(--red);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.30);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-wordmark {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .header-brand {
+      color: var(--white);
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .header-divider {
+      width: 1px;
+      height: 20px;
+      background: rgba(255,255,255,0.4);
+      align-self: center;
+    }
+
+    .header-title {
+      color: rgba(255,255,255,0.9);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #dataStatus {
+      color: rgba(255,255,255,0.75);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    #reloadBtn {
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.35);
+      color: white;
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: none;
+      transition: background 0.2s;
+    }
+
+    #reloadBtn:hover { background: rgba(255,255,255,0.28); }
+
+    /* ── CONTAINER ───────────────────────────────────── */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 24px 56px;
+    }
+
+    /* ── TABLE ───────────────────────────────────────── */
+    .table-card {
+      background: white;
+      border-radius: 12px;
+      padding: 22px 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .table-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .table-title {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .table-search {
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      padding: 6px 12px;
+      border: 1px solid var(--mid-gray);
+      border-radius: 8px;
+      outline: none;
+      width: 220px;
+      transition: border-color 0.2s;
+    }
+
+    .table-search:focus { border-color: var(--red); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th {
+      text-align: left;
+      padding: 9px 12px;
+      background: var(--gray);
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-gray);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    th.sorted-asc::after  { content: ' ↑'; color: var(--red); }
+    th.sorted-desc::after { content: ' ↓'; color: var(--red); }
+    th:hover { background: var(--mid-gray); }
+
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--gray);
+    }
+
+    td.campaign-name {
+      max-width: 260px;
+      word-break: break-word;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fff7f7; }
+
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.highlight-val { font-weight: 700; color: var(--red); }
+
+    .table-footer {
+      font-size: 11px;
+      color: var(--text-gray);
+      margin-top: 14px;
+    }
+
+    /* ── BUDGET SIMULATION TABLE ─────────────────────────────── */
+    #simTable.sim-hide-est .est-col { display: none; }
+    .sim-note {
+      font-size: 11px;
+      color: var(--text-gray);
+      margin-top: 10px;
+      line-height: 1.7;
+    }
+    .cap-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      background: var(--gray);
+      color: var(--text-gray);
+      border: 1px solid var(--mid-gray);
+      border-radius: 10px;
+      padding: 1px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+      letter-spacing: .5px;
+    }
+    .sim-summary {
+      display: flex;
+      gap: 28px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding: 14px 18px;
+      background: var(--gray);
+      border-radius: 8px;
+    }
+    .sim-stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--text-gray);
+    }
+    .sim-stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--black);
+      margin-top: 3px;
+    }
+    tr.sim-total td {
+      font-weight: 700;
+      border-top: 2px solid var(--red);
+      background: #fff7f7 !important;
+    }
+
+    /* ── BUDGET PACING TABLE ─────────────────────────────────── */
+    .pace-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .pace-select {
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      padding: 6px 10px;
+      border: 1px solid var(--mid-gray);
+      border-radius: 8px;
+      background: white;
+      outline: none;
+      cursor: pointer;
+    }
+    .pace-select:focus { border-color: var(--red); }
+    .pace-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 2px 9px;
+      white-space: nowrap;
+      letter-spacing: .3px;
+    }
+    .pace-ok    { background: #E6F4EA; color: #1B6B35; }
+    .pace-under { background: #FFF1D6; color: #8A5200; }
+    .pace-over  { background: #FDECEE; color: #A3121F; }
+    .pace-na    { background: var(--gray); color: var(--text-gray); }
+    td.pace-gap-high { color: #A3121F; font-weight: 700; }
+    td.pace-gap-low  { color: #8A5200; font-weight: 700; }
+    .pace-stale {
+      background: #FFF1D6;
+      color: #8A5200;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+
+    /* ── EXPAND / COLLAPSE ───────────────────────────────────── */
+    .expand-wrap { margin-top: 14px; text-align: center; }
+    .expand-btn {
+      background: var(--gray);
+      color: var(--black);
+      border: 1px solid var(--mid-gray);
+      padding: 8px 22px;
+      border-radius: 20px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .expand-btn:hover {
+      background: #fff0f1;
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    #refreshBtn {
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.35);
+      color: white;
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    #refreshBtn:hover { background: rgba(255,255,255,0.28); }
+    .st-badge { display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:700; border-radius:10px; padding:2px 9px; white-space:nowrap; letter-spacing:.3px; }
+    .st-badge::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
+    .st-active { background:#E6F4EA; color:#1B6B35; }
+    .st-paused { background:#FFF1D6; color:#8A5200; }
+    .st-ended  { background:var(--gray); color:var(--text-gray); }
+    .st-unknown{ background:var(--gray); color:var(--text-gray); }
+    #bfTable th, #bfTable td { padding: 9px 7px; }
+    #bfTable td:first-child { min-width: 170px; }
+    td.sub { color: var(--text-gray); font-size: 11px; }
+    tr.bf-paused td { color: #6b6b6b; }
+    .camp-name { display:block; font-size:10px; color:var(--text-gray); margin-top:2px; max-width:300px; word-break:break-word; }
+
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-wordmark">
+    <span class="header-brand">Tommy's Express</span>
+    <div class="header-divider"></div>
+    <span class="header-title">Brand Fund Search Budget Tracker (Internal)</span>
+  </div>
+  <div class="header-right">
+    <span id="dataStatus">Loading data…</span>
+    <button id="refreshBtn" onclick="loadAll()">↻ Refresh</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- BRAND FUND — SEARCH CAMPAIGN BUDGETS -->
+  <div class="table-card" id="bfCard">
+    <div class="table-header-row" style="flex-wrap:wrap; gap:10px">
+      <div class="table-title" id="bfTitle">Brand Fund Search Budgets</div>
+      <div class="pace-controls">
+        <select class="pace-select" id="bfGroup" onchange="renderBf()">
+          <option value="all">All campaign types</option>
+          <option value="PPW Search">PayPerWash Search</option>
+          <option value="Unlimited Search">Unlimited Search (Regional Search)</option>
+          <option value="Fleet Search">Fleet Search</option>
+        </select>
+        <select class="pace-select" id="bfStatusFilter" onchange="renderBf()">
+          <option value="all">All statuses</option>
+          <option value="Active">Active</option>
+          <option value="Paused">Paused</option>
+          <option value="Ended">Ended</option>
+        </select>
+        <input type="text" class="table-search" id="bfSearch" placeholder="Search campaign or region&hellip;" oninput="renderBf()">
+      </div>
+    </div>
+    <div class="pace-stale" id="bfStale" style="display:none"></div>
+    <div class="sim-summary" id="bfSummary"></div>
+    <table id="bfTable">
+      <thead>
+        <tr>
+          <th onclick="sortBf('groupOrder')">Campaign Type</th>
+          <th onclick="sortBf('region')">Region</th>
+          <th onclick="sortBf('statusOrder')">Status</th>
+          <th onclick="sortBf('sites')" style="text-align:right">Open Sites</th>
+          <th onclick="sortBf('share')" style="text-align:right">Budget Share</th>
+          <th onclick="sortBf('alloc')" style="text-align:right">Month Budget</th>
+          <th onclick="sortBf('spend')" style="text-align:right">Spend To Date</th>
+          <th onclick="sortBf('remaining')" style="text-align:right">Remaining</th>
+          <th onclick="sortBf('cur')" style="text-align:right">Daily Budget</th>
+          <th onclick="sortBf('need')" style="text-align:right">Needed Daily</th>
+          <th onclick="sortBf('proj')" style="text-align:right">Projected</th>
+          <th onclick="sortBf('projPct')" style="text-align:right">Proj. %</th>
+          <th onclick="sortBf('pace')">Pace</th>
+        </tr>
+      </thead>
+      <tbody id="bfBody"></tbody>
+    </table>
+    <div class="table-footer" id="bfFooter"></div>
+    <div class="sim-note" id="bfNote"></div>
+  </div>
+
+  <!-- BUDGET PACING — CURRENT VS NEEDED DAILY SPEND (same table as the RMC dashboard) -->
+  <div class="table-card" id="paceCard" style="display:none">
+    <div class="table-header-row" style="flex-wrap:wrap; gap:10px">
+      <div class="table-title">Budget Pacing &mdash; Current vs. Needed Daily Spend</div>
+      <div class="pace-controls">
+        <select class="pace-select" id="paceFilter" onchange="paceExpanded=false; renderPaceTable()">
+          <option value="all">All sites</option>
+          <option value="off">Off pace (more than $2.00 from needed)</option>
+          <option value="Under">Projected under budget</option>
+          <option value="Over">Projected over budget</option>
+          <option value="On track">On track</option>
+        </select>
+        <input type="text" class="table-search" id="paceSearch" placeholder="Search site or region&hellip;" oninput="renderPaceTable()">
+      </div>
+    </div>
+    <div class="pace-stale" id="paceStale" style="display:none"></div>
+    <div class="sim-summary" id="paceSummary"></div>
+    <table id="paceTable">
+      <thead>
+        <tr>
+          <th onclick="sortPaceBy('siteId')">Site ID</th>
+          <th onclick="sortPaceBy('region')">Region</th>
+          <th onclick="sortPaceBy('total')" style="text-align:right">Total Budget</th>
+          <th onclick="sortPaceBy('spend')" style="text-align:right">Spend To Date</th>
+          <th onclick="sortPaceBy('cur')" style="text-align:right">Current Daily Budget</th>
+          <th onclick="sortPaceBy('need')" style="text-align:right">Needed Daily Spend</th>
+          <th onclick="sortPaceBy('gapAbs')" style="text-align:right">Daily Gap</th>
+          <th onclick="sortPaceBy('proj')" style="text-align:right">Projected Month-End</th>
+          <th onclick="sortPaceBy('projPct')" style="text-align:right">Projected % of Budget</th>
+          <th onclick="sortPaceBy('status')">Status</th>
+        </tr>
+      </thead>
+      <tbody id="paceBody"></tbody>
+    </table>
+    <div class="table-footer" id="paceFooter"></div>
+    <div class="expand-wrap" id="paceExpandWrap"></div>
+    <div class="sim-note" id="paceNote"></div>
+  </div>
+
+</div>
+
+<script>
+function simDateLabel(d) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || '');
+  if (!m) return d || '';
+  var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return mo[parseInt(m[2], 10) - 1] + ' ' + parseInt(m[3], 10);
+}
+var COLLAPSED_ROWS = 20;
+// Renders the Show all / Show less control into wrapId. Hidden entirely
+// when the result set already fits inside the collapsed limit.
+function renderExpandBtn(wrapId, expanded, total, shown, onclickName, noun) {
+  var wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  if (total <= COLLAPSED_ROWS) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = '<button class="expand-btn" onclick="' + onclickName + '()">' +
+    (expanded
+      ? '↑ Show less (top ' + COLLAPSED_ROWS + ')'
+      : '↓ Show all ' + total.toLocaleString() + ' ' + noun) +
+    '</button>';
+}
+
+function numFmt(n) {
+  return Number(n || 0).toLocaleString();
+}
+function fmt$(n) {
+  return Number(n || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+var PACE_CSV_URL = 'https://docs.google.com/spreadsheets/d/1qec_c9vZUX0XexyWEa4yAAn_4bWSaX4KUAjlpnUR7N8/gviz/tq?tqx=out:csv&headers=1&sheet=Budget+Tracker+Feed';
+var PACE_TOLERANCE = 2.00;   // a site is "off pace" when |current - needed| is more than this ($/day)
+var paceData = [];
+var paceAsOf = '';
+var paceExpanded = false;
+var paceSortCol = 'gapAbs', paceSortDir = -1;
+
+// "$1,250.00" / "99.6%" / "" -> number or null (blank stays blank, never 0)
+function paceNum(v) {
+  if (v === null || v === undefined) return null;
+  var s = String(v).replace(/[$,%\s]/g, '');
+  if (s === '') return null;
+  var n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function loadPaceData() {
+  var ctrl = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 10000);
+  fetch(PACE_CSV_URL, { signal: ctrl.signal })
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    })
+    .then(function(txt) {
+      clearTimeout(timer);
+      var parsed = Papa.parse(txt, { header: true, skipEmptyLines: true });
+      var f = parsed.meta && parsed.meta.fields || [];
+      // Guard: a missing tab can come back as some other sheet entirely.
+      if (f.indexOf('Site ID') === -1 || f.indexOf('Current Daily Budget') === -1 ||
+          f.indexOf('Needed Daily Spend') === -1) throw new Error('feed tab not found');
+      paceData = parsed.data.map(function(r) {
+        var cur = paceNum(r['Current Daily Budget']);
+        var need = paceNum(r['Needed Daily Spend']);
+        var gap = (cur !== null && need !== null) ? Math.round((cur - need) * 100) / 100 : null;
+        return {
+          siteId: (r['Site ID'] || '').trim(),
+          region: (r['Region'] || '').trim(),
+          total:  paceNum(r['Total Budget']),
+          spend:  paceNum(r['Spend To Date']),
+          cur:    cur,
+          need:   need,
+          gap:    gap,
+          gapAbs: gap === null ? null : Math.abs(gap),
+          proj:   paceNum(r['Projected Month-End']),
+          projPct: paceNum(r['Projected % of Budget']),
+          status: (r['Status'] || '').trim(),
+          daysLeft: paceNum(r['Days Left']),
+          asOf:   (r['As Of'] || '').trim()
+        };
+      }).filter(function(r) {
+        // Site ID pattern also drops any total / blank rows.
+        return /^[A-Z]{2,3}\d{2,4}$/.test(r.siteId);
+      });
+      paceData.forEach(function(r) { if (r.asOf && r.asOf > paceAsOf) paceAsOf = r.asOf; });
+      if (paceData.length) {
+        document.getElementById('paceCard').style.display = 'block';
+        renderPaceTable();
+      }
+    })
+    .catch(function(e) {
+      clearTimeout(timer);
+      document.getElementById('paceCard').style.display = 'block';
+      document.getElementById('paceSummary').style.display = 'none';
+      document.getElementById('paceBody').innerHTML =
+        '<tr><td colspan="10" style="padding:20px; color:var(--text-gray); line-height:1.7">' +
+        'Could not load budget pacing data (' + esc(e.message || 'network error') + ').<br>' +
+        'The sheet must be reachable cross-origin. If this persists, use ' +
+        'File &rarr; Share &rarr; Publish to web on the &ldquo;Budget Tracker Feed&rdquo; ' +
+        'tab as CSV, then set PACE_CSV_URL to that published link.</td></tr>';
+    });
+}
+
+function sortPaceBy(col) {
+  if (paceSortCol === col) paceSortDir *= -1;
+  else { paceSortCol = col; paceSortDir = (col === 'siteId' || col === 'region' || col === 'status') ? 1 : -1; }
+  renderPaceTable();
+}
+
+function paceMoney(n) { return n === null ? '&mdash;' : (n < 0 ? '&minus;$' + fmt$(Math.abs(n)) : '$' + fmt$(n)); }
+
+function renderPaceTable() {
+  if (!paceData.length) return;
+  var q = (document.getElementById('paceSearch').value || '').toLowerCase();
+  var pf = document.getElementById('paceFilter').value;
+  var accRegion = null, rmcSites = null;
+
+  var rows = paceData.filter(function(r) {
+    if (accRegion && r.region.toLowerCase() !== accRegion.toLowerCase()) return false;
+    if (rmcSites && rmcSites.indexOf(r.siteId) === -1) return false;
+    if (q && r.siteId.toLowerCase().indexOf(q) === -1 && r.region.toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  });
+
+  // Summary counts reflect the region / RMC / search scope, before the status dropdown
+  var nOff = 0, nUnder = 0, nOver = 0, nOn = 0, tCur = 0, tNeed = 0, tSpend = 0, tTotal = 0, tProj = 0;
+  rows.forEach(function(r) {
+    if (r.gapAbs !== null && r.gapAbs > PACE_TOLERANCE + 1e-9) nOff++;
+    if (r.status === 'Under') nUnder++;
+    else if (r.status === 'Over') nOver++;
+    else if (r.status === 'On track') nOn++;
+  });
+
+  var shown = rows.filter(function(r) {
+    if (pf === 'off') return r.gapAbs !== null && r.gapAbs > PACE_TOLERANCE + 1e-9;
+    if (pf !== 'all') return r.status === pf;
+    return true;
+  });
+
+  shown.forEach(function(r) {
+    if (r.cur !== null)   tCur   += r.cur;
+    if (r.need !== null)  tNeed  += r.need;
+    if (r.spend !== null) tSpend += r.spend;
+    if (r.total !== null) tTotal += r.total;
+    if (r.proj !== null)  tProj  += r.proj;
+  });
+
+  shown = shown.slice().sort(function(a, b) {
+    var va = a[paceSortCol], vb = b[paceSortCol];
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    if (typeof va === 'number' && typeof vb === 'number') return paceSortDir * (va - vb);
+    return paceSortDir * String(va).localeCompare(String(vb));
+  });
+
+  // Sort arrows — scoped to this table so the other tables are untouched
+  var paceThs = document.querySelectorAll('#paceTable thead th');
+  var order = ['siteId', 'region', 'total', 'spend', 'cur', 'need', 'gapAbs', 'proj', 'projPct', 'status'];
+  for (var i = 0; i < paceThs.length; i++) {
+    paceThs[i].classList.remove('sorted-asc', 'sorted-desc');
+    if (order[i] === paceSortCol) paceThs[i].classList.add(paceSortDir === 1 ? 'sorted-asc' : 'sorted-desc');
+  }
+
+  var display = paceExpanded ? shown : shown.slice(0, COLLAPSED_ROWS);
+  var html = '';
+  display.forEach(function(r) {
+    var gapTxt = '&mdash;', gapCls = '';
+    if (r.gap !== null) {
+      gapTxt = (r.gap > 0 ? '+' : r.gap < 0 ? '&minus;' : '') + '$' + fmt$(Math.abs(r.gap));
+      if (r.gapAbs > PACE_TOLERANCE + 1e-9) gapCls = r.gap > 0 ? ' pace-gap-high' : ' pace-gap-low';
+    }
+    var gapTitle = '';
+    if (gapCls === ' pace-gap-high') gapTitle = 'Daily budget is above what is needed to finish the month on plan';
+    else if (gapCls === ' pace-gap-low') gapTitle = 'Daily budget is below what is needed to finish the month on plan';
+    var badge = r.status === 'On track' ? 'pace-ok' : r.status === 'Under' ? 'pace-under' : r.status === 'Over' ? 'pace-over' : 'pace-na';
+    html += '<tr>' +
+      '<td>' + esc(r.siteId) + '</td>' +
+      '<td>' + esc(r.region) + '</td>' +
+      '<td class="num">' + paceMoney(r.total) + '</td>' +
+      '<td class="num">' + paceMoney(r.spend) + '</td>' +
+      '<td class="num">' + paceMoney(r.cur) + '</td>' +
+      '<td class="num" style="font-weight:700">' + paceMoney(r.need) + '</td>' +
+      '<td class="num' + gapCls + '"' + (gapTitle ? ' title="' + gapTitle + '"' : '') + '>' + gapTxt + '</td>' +
+      '<td class="num">' + paceMoney(r.proj) + '</td>' +
+      '<td class="num">' + (r.projPct === null ? '&mdash;' : r.projPct.toFixed(1) + '%') + '</td>' +
+      '<td><span class="pace-badge ' + badge + '">' + esc(r.status || 'n/a') + '</span></td>' +
+      '</tr>';
+  });
+
+  if (!shown.length) {
+    html = '<tr><td colspan="10" style="padding:20px; color:var(--text-gray)">No sites match the current filters.</td></tr>';
+  } else {
+    html += '<tr class="sim-total">' +
+      '<td>Total</td><td>' + numFmt(shown.length) + ' sites</td>' +
+      '<td class="num">$' + fmt$(tTotal) + '</td>' +
+      '<td class="num">$' + fmt$(tSpend) + '</td>' +
+      '<td class="num">$' + fmt$(tCur) + '</td>' +
+      '<td class="num">$' + fmt$(tNeed) + '</td>' +
+      '<td class="num">' + ((tCur - tNeed) >= 0 ? '+' : '&minus;') + '$' + fmt$(Math.abs(tCur - tNeed)) + '</td>' +
+      '<td class="num">$' + fmt$(tProj) + '</td>' +
+      '<td class="num">' + (tTotal > 0 ? (tProj / tTotal * 100).toFixed(1) + '%' : '&mdash;') + '</td>' +
+      '<td></td></tr>';
+  }
+  document.getElementById('paceBody').innerHTML = html;
+
+  var daysLeft = null;
+  paceData.forEach(function(r) { if (r.daysLeft !== null) daysLeft = r.daysLeft; });
+  document.getElementById('paceSummary').style.display = '';
+  document.getElementById('paceSummary').innerHTML =
+    '<div><div class="sim-stat-label">Sites</div><div class="sim-stat-value">' + numFmt(rows.length) + '</div></div>' +
+    '<div><div class="sim-stat-label">Off pace (&gt; $' + PACE_TOLERANCE.toFixed(2) + ')</div><div class="sim-stat-value">' + numFmt(nOff) + '</div></div>' +
+    '<div><div class="sim-stat-label">Under</div><div class="sim-stat-value">' + numFmt(nUnder) + '</div></div>' +
+    '<div><div class="sim-stat-label">Over</div><div class="sim-stat-value">' + numFmt(nOver) + '</div></div>' +
+    '<div><div class="sim-stat-label">On track</div><div class="sim-stat-value">' + numFmt(nOn) + '</div></div>' +
+    '<div><div class="sim-stat-label">Days left</div><div class="sim-stat-value">' + (daysLeft === null ? '&mdash;' : numFmt(daysLeft)) + '</div></div>' +
+    '<div><div class="sim-stat-label">As of</div><div class="sim-stat-value">' + (paceAsOf ? esc(simDateLabel(paceAsOf)) : '&mdash;') + '</div></div>';
+
+  // Stale-data warning: the feed is rewritten every morning
+  var staleEl = document.getElementById('paceStale');
+  var ageDays = null;
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(paceAsOf || '');
+  if (m) {
+    var asOfUtc = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+    var now = new Date();
+    ageDays = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - asOfUtc) / 86400000);
+  }
+  if (ageDays !== null && ageDays >= 2) {
+    staleEl.style.display = 'block';
+    staleEl.textContent = 'This pacing data was last refreshed ' + simDateLabel(paceAsOf) + ' (' + ageDays + ' days ago). The daily update may not have run.';
+  } else {
+    staleEl.style.display = 'none';
+  }
+
+  document.getElementById('paceFooter').textContent =
+    'Showing ' + display.length + ' of ' + shown.length + ' matching sites (' +
+    paceData.length + ' total) — ' + 'all sites';
+
+  renderExpandBtn('paceExpandWrap', paceExpanded, shown.length, display.length,
+                  'togglePaceExpand', 'sites');
+
+  document.getElementById('paceNote').innerHTML =
+    '<strong>Needed Daily Spend</strong> = (Total Budget &minus; Spend To Date) &divide; Days Left, using Google Ads spend through yesterday. ' +
+    '<strong>Daily Gap</strong> is Current Daily Budget minus Needed Daily Spend: a plus means the daily budget is higher than needed to finish the month on plan, ' +
+    'a minus means it is lower. A site is flagged when the gap is more than $' + PACE_TOLERANCE.toFixed(2) + ' either way, and rows are sorted with the biggest gaps first. ' +
+    '<strong>Status</strong> compares projected month-end spend to the total budget: Under below 90%, Over above 110%. ' +
+    'Google can spend up to 2&times; a campaign&rsquo;s daily budget on any single day, so month-end spend is capped at roughly 30.4&times; the daily budget rather than being exact each day. ' +
+    'This table is rewritten each morning' + (paceAsOf ? ' (last update ' + esc(simDateLabel(paceAsOf)) + ')' : '') + ', so budget changes made during the day appear the next morning.';
+}
+
+function togglePaceExpand() { paceExpanded = !paceExpanded; renderPaceTable(); }
+/* ================================================================
+   BRAND FUND — SEARCH CAMPAIGN BUDGETS
+   Sheet "Brand Fund Budget Feed" (BF_SHEET_ID) has three tabs:
+     Campaign Feed : written each morning by the Google Ads script
+                     "Brand Fund Budget Feed" (Brand Fund account)
+     Budget Feed   : monthly budget per campaign type, copied from the
+                     Brand Fund tabs of the 2026 PMT Annual Plan (never edited here)
+     Region Sites  : open wash sites per region (from Yext)
+   PPW Search and Unlimited Search budgets are split across the six regional
+   campaigns by each region's share of open sites. Fleet Search is national.
+================================================================ */
+var BF_SHEET_ID = '1hO_Xx_r7frixi6WNOJuRt2T6XA0LZQbdd0mVPeTO5tY';
+var BF_TOLERANCE_LOW = 90, BF_TOLERANCE_HIGH = 110;
+var BF_GROUPS = ['PPW Search', 'Unlimited Search', 'Fleet Search'];
+var BF_GROUP_LABEL = { 'PPW Search': 'PayPerWash Search', 'Unlimited Search': 'Unlimited Search', 'Fleet Search': 'Fleet Search' };
+var BF_STATUS_ORDER = { 'Active': 0, 'Paused': 1, 'Ended': 2 };
+var bfRows = [], bfMeta = {};
+var bfSortCol = 'groupOrder', bfSortDir = 1;
+
+function bfUrl(tab) {
+  return 'https://docs.google.com/spreadsheets/d/' + BF_SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' +
+    encodeURIComponent(tab).replace(/%20/g, '+');
+}
+
+function bfFetchTab(tab, needFields) {
+  var ctrl = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 12000);
+  return fetch(bfUrl(tab), { signal: ctrl.signal })
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    })
+    .then(function(txt) {
+      clearTimeout(timer);
+      var p = Papa.parse(txt, { header: true, skipEmptyLines: true });
+      var f = (p.meta && p.meta.fields) || [];
+      needFields.forEach(function(n) {
+        if (f.indexOf(n) === -1) throw new Error('"' + tab + '" tab not found or missing column "' + n + '"');
+      });
+      return p.data;
+    })
+    .catch(function(e) { clearTimeout(timer); throw e; });
+}
+
+function bfDaysInMonth(ym) {
+  var m = /^(\d{4})-(\d{2})$/.exec(ym || '');
+  return m ? new Date(+m[1], +m[2], 0).getDate() : null;
+}
+
+function bfMonthLabel(ym) {
+  var m = /^(\d{4})-(\d{2})$/.exec(ym || '');
+  if (!m) return ym || '';
+  var mo = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return mo[+m[2] - 1] + ' ' + m[1];
+}
+
+function loadAll() {
+  document.getElementById('dataStatus').textContent = 'Loading data…';
+  loadBf();
+  loadPaceData();
+}
+
+function loadBf() {
+  Promise.all([
+    bfFetchTab('Campaign Feed', ['Campaign', 'Group', 'Region', 'Status', 'Daily Budget', 'Month-to-Date Spend', 'Month']),
+    bfFetchTab('Budget Feed', ['Month', 'Group', 'Budget']),
+    bfFetchTab('Region Sites', ['Region', 'Open Sites'])
+  ]).then(function(res) {
+    var camps = res[0], budgets = res[1], sites = res[2];
+
+    var month = '';
+    camps.forEach(function(r) { var m = (r['Month'] || '').trim(); if (m > month) month = m; });
+    var asOf = '', through = '';
+    camps.forEach(function(r) {
+      var a = (r['As Of'] || '').trim(); if (a > asOf) asOf = a;
+      var t = (r['Through'] || '').trim(); if (t > through) through = t;
+    });
+
+    var budgetByGroup = {};
+    budgets.forEach(function(r) {
+      if ((r['Month'] || '').trim() !== month) return;
+      var v = paceNum(r['Budget']);
+      if (v !== null) budgetByGroup[(r['Group'] || '').trim()] = v;
+    });
+
+    var siteMap = {}, siteTotal = 0, sitesAsOf = '';
+    sites.forEach(function(r) {
+      var n = paceNum(r['Open Sites']);
+      var reg = (r['Region'] || '').trim();
+      if (!reg || n === null) return;
+      siteMap[reg] = n; siteTotal += n;
+      var a = (r['As Of'] || '').trim(); if (a > sitesAsOf) sitesAsOf = a;
+    });
+
+    var dim = bfDaysInMonth(month);
+    var elapsed = null;
+    var tm = /^\d{4}-\d{2}-(\d{2})$/.exec(through);
+    if (tm && through.slice(0, 7) === month) elapsed = parseInt(tm[1], 10);
+    else if (through && through.slice(0, 7) > month) elapsed = dim;   // month is complete
+    var daysLeft = (dim !== null && elapsed !== null) ? Math.max(dim - elapsed, 0) : null;
+
+    // rows per group, to split national campaigns evenly
+    var perGroupNational = {};
+    var base = camps.map(function(r) {
+      var g = (r['Group'] || '').trim();
+      return { group: g, region: (r['Region'] || '').trim() };
+    });
+    base.forEach(function(b) { if (!siteMap[b.region]) perGroupNational[b.group] = (perGroupNational[b.group] || 0) + 1; });
+
+    bfRows = camps.filter(function(r) { return BF_GROUPS.indexOf((r['Group'] || '').trim()) !== -1; }).map(function(r) {
+      var group = (r['Group'] || '').trim();
+      var region = (r['Region'] || '').trim();
+      var status = (r['Status'] || '').trim();
+      var gBudget = budgetByGroup.hasOwnProperty(group) ? budgetByGroup[group] : null;
+      var regional = siteMap.hasOwnProperty(region);
+      var sitesN = regional ? siteMap[region] : null;
+      var share = regional && siteTotal > 0 ? sitesN / siteTotal : (perGroupNational[group] ? 1 / perGroupNational[group] : null);
+      var alloc = (gBudget !== null && share !== null) ? Math.round(gBudget * share * 100) / 100 : null;
+      var spend = paceNum(r['Month-to-Date Spend']);
+      var cur = paceNum(r['Daily Budget']);
+      var remaining = (alloc !== null && spend !== null) ? Math.round((alloc - spend) * 100) / 100 : null;
+      var need = (remaining !== null && daysLeft) ? Math.round(remaining / daysLeft * 100) / 100 : null;
+      var proj = (spend !== null && elapsed) ? Math.round(spend / elapsed * dim * 100) / 100 : null;
+      var projPct = (proj !== null && alloc) ? proj / alloc * 100 : null;
+      var pace = 'n/a';
+      if (projPct !== null) pace = projPct < BF_TOLERANCE_LOW ? 'Under' : projPct > BF_TOLERANCE_HIGH ? 'Over' : 'On track';
+      return {
+        campaign: (r['Campaign'] || '').trim(), group: group, groupOrder: BF_GROUPS.indexOf(group),
+        region: region, status: status, statusOrder: BF_STATUS_ORDER.hasOwnProperty(status) ? BF_STATUS_ORDER[status] : 9,
+        sites: sitesN, share: share, alloc: alloc, spend: spend, remaining: remaining, cur: cur, need: need,
+        proj: proj, projPct: projPct, pace: pace
+      };
+    });
+
+    bfMeta = { month: month, asOf: asOf, through: through, daysLeft: daysLeft, elapsed: elapsed, dim: dim,
+               siteTotal: siteTotal, sitesAsOf: sitesAsOf, budgetByGroup: budgetByGroup,
+               missingBudget: BF_GROUPS.filter(function(g) { return !budgetByGroup.hasOwnProperty(g); }) };
+    renderBf();
+    document.getElementById('dataStatus').textContent = through ? 'Spend through ' + simDateLabel(through) : 'Loaded';
+  }).catch(function(e) {
+    document.getElementById('bfSummary').style.display = 'none';
+    document.getElementById('bfBody').innerHTML =
+      '<tr><td colspan="13" style="padding:20px; color:var(--text-gray); line-height:1.7">' +
+      'Could not load the Brand Fund budget data (' + esc(e.message || 'network error') + ').<br>' +
+      'The &ldquo;Brand Fund Budget Feed&rdquo; sheet must be shared so anyone with the link can view it, ' +
+      'and it needs the Campaign Feed, Budget Feed and Region Sites tabs.</td></tr>';
+    document.getElementById('dataStatus').textContent = 'Load failed';
+  });
+}
+
+function sortBf(col) {
+  if (bfSortCol === col) bfSortDir *= -1;
+  else { bfSortCol = col; bfSortDir = (col === 'groupOrder' || col === 'region' || col === 'statusOrder' || col === 'pace') ? 1 : -1; }
+  renderBf();
+}
+
+function bfBadge(status) {
+  var c = status === 'Active' ? 'st-active' : status === 'Paused' ? 'st-paused' : status === 'Ended' ? 'st-ended' : 'st-unknown';
+  return '<span class="st-badge ' + c + '">' + esc(status || 'Unknown') + '</span>';
+}
+
+function renderBf() {
+  if (!bfRows.length && !bfMeta.month) return;
+  var q = (document.getElementById('bfSearch').value || '').toLowerCase();
+  var gf = document.getElementById('bfGroup').value;
+  var sf = document.getElementById('bfStatusFilter').value;
+
+  var rows = bfRows.filter(function(r) {
+    if (gf !== 'all' && r.group !== gf) return false;
+    if (sf !== 'all' && r.status !== sf) return false;
+    if (q && r.campaign.toLowerCase().indexOf(q) === -1 && r.region.toLowerCase().indexOf(q) === -1 &&
+        BF_GROUP_LABEL[r.group].toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  });
+
+  var tAlloc = 0, tSpend = 0, tRem = 0, tCur = 0, tNeed = 0, tProj = 0, nActive = 0, nPaused = 0;
+  rows.forEach(function(r) {
+    if (r.alloc !== null) tAlloc += r.alloc;
+    if (r.spend !== null) tSpend += r.spend;
+    if (r.remaining !== null) tRem += r.remaining;
+    if (r.cur !== null && r.status === 'Active') tCur += r.cur;
+    if (r.need !== null) tNeed += r.need;
+    if (r.proj !== null) tProj += r.proj;
+    if (r.status === 'Active') nActive++; else if (r.status === 'Paused') nPaused++;
+  });
+
+  rows = rows.slice().sort(function(a, b) {
+    var va = a[bfSortCol], vb = b[bfSortCol];
+    var c = 0;
+    if (va === null && vb === null) c = 0;
+    else if (va === null) return 1;
+    else if (vb === null) return -1;
+    else if (typeof va === 'number' && typeof vb === 'number') c = bfSortDir * (va - vb);
+    else c = bfSortDir * String(va).localeCompare(String(vb));
+    if (c !== 0) return c;
+    // tie-break: type, then region
+    if (a.groupOrder !== b.groupOrder) return a.groupOrder - b.groupOrder;
+    return a.region.localeCompare(b.region);
+  });
+
+  var ths = document.querySelectorAll('#bfTable thead th');
+  var order = ['groupOrder', 'region', 'statusOrder', 'sites', 'share', 'alloc', 'spend', 'remaining', 'cur', 'need', 'proj', 'projPct', 'pace'];
+  for (var i = 0; i < ths.length; i++) {
+    ths[i].classList.remove('sorted-asc', 'sorted-desc');
+    if (order[i] === bfSortCol) ths[i].classList.add(bfSortDir === 1 ? 'sorted-asc' : 'sorted-desc');
+  }
+
+  var html = '';
+  rows.forEach(function(r) {
+    var badge = r.pace === 'On track' ? 'pace-ok' : r.pace === 'Under' ? 'pace-under' : r.pace === 'Over' ? 'pace-over' : 'pace-na';
+    html += '<tr' + (r.status !== 'Active' ? ' class="bf-paused"' : '') + '>' +
+      '<td>' + esc(BF_GROUP_LABEL[r.group] || r.group) + '<span class="camp-name">' + esc(r.campaign) + '</span></td>' +
+      '<td>' + esc(r.region) + '</td>' +
+      '<td>' + bfBadge(r.status) + '</td>' +
+      '<td class="num">' + (r.sites === null ? '&mdash;' : numFmt(r.sites)) + '</td>' +
+      '<td class="num">' + (r.share === null ? '&mdash;' : (r.share * 100).toFixed(1) + '%') + '</td>' +
+      '<td class="num" style="font-weight:700">' + paceMoney(r.alloc) + '</td>' +
+      '<td class="num">' + paceMoney(r.spend) + '</td>' +
+      '<td class="num">' + paceMoney(r.remaining) + '</td>' +
+      '<td class="num">' + paceMoney(r.cur) + '</td>' +
+      '<td class="num">' + paceMoney(r.need) + '</td>' +
+      '<td class="num">' + paceMoney(r.proj) + '</td>' +
+      '<td class="num">' + (r.projPct === null ? '&mdash;' : r.projPct.toFixed(1) + '%') + '</td>' +
+      '<td><span class="pace-badge ' + badge + '">' + esc(r.pace) + '</span></td>' +
+      '</tr>';
+  });
+  if (!rows.length) {
+    html = '<tr><td colspan="13" style="padding:20px; color:var(--text-gray)">No campaigns match the current filters.</td></tr>';
+  } else {
+    html += '<tr class="sim-total"><td>Total</td><td>' + numFmt(rows.length) + ' campaigns</td><td></td><td></td><td></td>' +
+      '<td class="num">$' + fmt$(tAlloc) + '</td><td class="num">$' + fmt$(tSpend) + '</td>' +
+      '<td class="num">' + paceMoney(Math.round(tRem * 100) / 100) + '</td>' +
+      '<td class="num">$' + fmt$(tCur) + '</td><td class="num">$' + fmt$(tNeed) + '</td>' +
+      '<td class="num">$' + fmt$(tProj) + '</td>' +
+      '<td class="num">' + (tAlloc > 0 ? (tProj / tAlloc * 100).toFixed(1) + '%' : '&mdash;') + '</td><td></td></tr>';
+  }
+  document.getElementById('bfBody').innerHTML = html;
+
+  document.getElementById('bfTitle').textContent = 'Brand Fund Search Budgets — ' + bfMonthLabel(bfMeta.month);
+  document.getElementById('bfSummary').style.display = '';
+  document.getElementById('bfSummary').innerHTML =
+    '<div><div class="sim-stat-label">Month Budget</div><div class="sim-stat-value">$' + fmt$(tAlloc) + '</div></div>' +
+    '<div><div class="sim-stat-label">Spend To Date</div><div class="sim-stat-value">$' + fmt$(tSpend) + '</div></div>' +
+    '<div><div class="sim-stat-label">Remaining</div><div class="sim-stat-value">' + paceMoney(Math.round(tRem * 100) / 100) + '</div></div>' +
+    '<div><div class="sim-stat-label">Projected %</div><div class="sim-stat-value">' + (tAlloc > 0 ? (tProj / tAlloc * 100).toFixed(1) + '%' : '&mdash;') + '</div></div>' +
+    '<div><div class="sim-stat-label">Active / Paused</div><div class="sim-stat-value">' + nActive + ' / ' + nPaused + '</div></div>' +
+    '<div><div class="sim-stat-label">Days left</div><div class="sim-stat-value">' + (bfMeta.daysLeft === null ? '&mdash;' : numFmt(bfMeta.daysLeft)) + '</div></div>' +
+    '<div><div class="sim-stat-label">Open sites</div><div class="sim-stat-value">' + numFmt(bfMeta.siteTotal) + '</div></div>';
+
+  // warnings
+  var warn = [];
+  if (bfMeta.missingBudget && bfMeta.missingBudget.length) {
+    warn.push('No ' + bfMonthLabel(bfMeta.month) + ' budget has been entered for: ' + bfMeta.missingBudget.map(function(g) { return BF_GROUP_LABEL[g]; }).join(', ') + '.');
+  }
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(bfMeta.asOf || '');
+  if (m) {
+    var now = new Date();
+    var age = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 86400000);
+    if (age >= 2) warn.push('Spend data was last refreshed ' + simDateLabel(bfMeta.asOf) + ' (' + age + ' days ago). The daily update may not have run.');
+  }
+  var staleEl = document.getElementById('bfStale');
+  if (warn.length) { staleEl.style.display = 'block'; staleEl.innerHTML = warn.map(esc).join('<br>'); }
+  else staleEl.style.display = 'none';
+
+  document.getElementById('bfFooter').textContent =
+    'Showing ' + rows.length + ' of ' + bfRows.length + ' campaigns' +
+    (bfMeta.sitesAsOf ? ' — open sites from Yext as of ' + simDateLabel(bfMeta.sitesAsOf) : '');
+
+  var gl = BF_GROUPS.map(function(g) {
+    return BF_GROUP_LABEL[g] + ' ' + (bfMeta.budgetByGroup.hasOwnProperty(g) ? '$' + fmt$(bfMeta.budgetByGroup[g]) : 'not set');
+  }).join(' &middot; ');
+  document.getElementById('bfNote').innerHTML =
+    '<strong>Month Budget</strong> comes from the Brand Fund tab of the 2026 PMT Annual Plan (' + gl + '). ' +
+    'The PayPerWash and Unlimited (Regional) Search budgets are split across the six regional campaigns by each region&rsquo;s share of open wash sites; Fleet Search is one national campaign. ' +
+    '<strong>Spend To Date</strong> is Google Ads spend from the 1st through yesterday. <strong>Needed Daily Spend</strong> = (Month Budget &minus; Spend To Date) &divide; Days Left. ' +
+    '<strong>Projected Month-End</strong> extends the month-to-date daily average to the end of the month; Pace is Under below ' + BF_TOLERANCE_LOW + '% and Over above ' + BF_TOLERANCE_HIGH + '% of the Month Budget. ' +
+    '<strong>Status</strong> is the campaign status in Google Ads; paused campaigns keep their budget share. Current Daily Budget totals count active campaigns only. ' +
+    'This page refreshes each morning.';
+}
+
+loadAll();
+
+</script>
+</body>
+</html>
